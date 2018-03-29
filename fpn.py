@@ -110,7 +110,7 @@ class FPN(nn.Module):
 
         img_size = list(img_tensor.size()[2:4])
 
-        roi_cls_loc, roi_scores, rois = self(img_tensor)
+        roi_cls_loc, roi_scores, rois = self(img_tensor, img_size)
         roi_scores = nn.Softmax(dim=1)(roi_scores).data
         roi_cls_loc = roi_cls_loc.view(-1, 4).data
 
