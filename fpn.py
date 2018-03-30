@@ -123,8 +123,8 @@ class FPN(nn.Module):
         cls_bbox = box_deparameterize_gpu(roi_cls_loc, rois)
 
         # clip bounding boxes
-        cls_bbox[:, [0, 2]] = cls_bbox[:, [0, 2]].clamp(0, img_size[0])
-        cls_bbox[:, [1, 3]] = cls_bbox[:, [1, 3]].clamp(0, img_size[1])
+        cls_bbox[:, [0, 2]] = cls_bbox[:, [0, 2]].clamp(0, img_size[0] - 1)
+        cls_bbox[:, [1, 3]] = cls_bbox[:, [1, 3]].clamp(0, img_size[1] - 1)
         cls_bbox = cls_bbox.view(-1, self.num_class * 4)
 
         box, score, label = non_maximum_suppression_roi(roi_scores, cls_bbox, range(1, Config.num_class),

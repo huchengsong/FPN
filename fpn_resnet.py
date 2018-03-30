@@ -42,10 +42,10 @@ def create_rpn_proposals(locs, scores, anchors, img_size):
 
     # clip bbox to image size
     rois[rois < 0] = 0
-    rois[:, 0][rois[:, 0] > img_h] = img_h
-    rois[:, 1][rois[:, 1] > img_w] = img_w
-    rois[:, 2][rois[:, 2] > img_h] = img_h
-    rois[:, 3][rois[:, 3] > img_w] = img_w
+    rois[:, 0][rois[:, 0] > img_h - 1] = img_h - 1
+    rois[:, 1][rois[:, 1] > img_w - 1] = img_w - 1
+    rois[:, 2][rois[:, 2] > img_h - 1] = img_h - 1
+    rois[:, 3][rois[:, 3] > img_w - 1] = img_w - 1
 
     # remove boxes with size smaller than threshold
     height = rois[:, 2] - rois[:, 0]
