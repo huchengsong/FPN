@@ -106,11 +106,12 @@ class FPN(nn.Module):
 
         # set parameters for evaluation
         Config.num_pre_nms = 6000
-        Config.num_post_nms = 1000
+        Config.num_post_nms = 300
 
         img_size = list(img_tensor.size()[2:4])
 
-        roi_cls_loc, roi_scores, rois = self(img_tensor, img_size)
+        features = self.extractor(img_tensor)
+        roi_cls_loc, roi_scores, rois = self(features, img_size)
         roi_scores = nn.Softmax(dim=1)(roi_scores).data
         roi_cls_loc = roi_cls_loc.view(-1, 4).data
 
@@ -119,13 +120,13 @@ class FPN(nn.Module):
         loc_std = torch.cuda.FloatTensor(loc_std)
         roi_cls_loc = roi_cls_loc * loc_std + loc_mean
 
-        rois = rois.view(-1, 1, 4).repeat(1, self.num_class, 1).view(-1, 4)
+        rois = rois.view(-1, 1, 4).repeat(1, self.num_classes, 1).view(-1, 4)
         cls_bbox = box_deparameterize_gpu(roi_cls_loc, rois)
 
         # clip bounding boxes
-        cls_bbox[:, [0, 2]] = cls_bbox[:, [0, 2]].clamp(0, img_size[0] - 1)
-        cls_bbox[:, [1, 3]] = cls_bbox[:, [1, 3]].clamp(0, img_size[1] - 1)
-        cls_bbox = cls_bbox.view(-1, self.num_class * 4)
+        cls_bbox[:, [0, 2]].clamp_(0, img_size[0] - 1)
+        cls_bbox[:, [1, 3]].clamp_(0, img_size[1] - 1)
+        cls_bbox = cls_bbox.view(-1, self.num_classes * 4)
 
         box, score, label = non_maximum_suppression_roi(roi_scores, cls_bbox, range(1, Config.num_class),
                                                         score_thresh=score_thresh, iou_thresh=iou_thresh)

@@ -6,3 +6,7 @@ __pycache__/fpn_resnet.cpython-36.pyc
 *.pyc
 .idea/workspace.xml
 __pycache__/fpn.cpython-36.pyc
+.idea/workspace.xml
+*.xml
+.idea/workspace.xml
+*.pyc

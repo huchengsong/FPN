@@ -1,7 +1,7 @@
 import cv2
 import os
 import torch
-from faster_rcnn_vgg16 import FasterRCNNVGG16
+from fpn_resnet import FPNResNet
 
 from configure import Config
 from train import create_img_tensor
@@ -14,7 +14,7 @@ def show(num):
     Config.score_thresh = 0.7
     key = Config.class_key
     # load model
-    faster_rcnn = FasterRCNNVGG16().cuda()
+    faster_rcnn = FPNResNet().cuda()
     state_dict = torch.load('faster_rcnn_model.pt')
     faster_rcnn.load_state_dict(state_dict['model'])
 

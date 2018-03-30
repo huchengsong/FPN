@@ -96,6 +96,7 @@ def train(epochs, img_box_dict, pretrained_model=Config.load_path):
             img, img_info = rescale_image(img_dir, img_info, flip=True)
             img_tensor = create_img_tensor(img)
             trainer.train_step(img_tensor, img_info)
+        trainer.save('faster_rcnn_model.pt')
 
         map = evaluation(dict_val, fpn_resnet)
         print('mAP: ', map)
@@ -103,8 +104,6 @@ def train(epochs, img_box_dict, pretrained_model=Config.load_path):
         # lr decay
         if epoch == 9:
             trainer.scale_lr(Config.lr_decay)
-
-        trainer.save('faster_rcnn_model.pt')
 
 
 if __name__ == '__main__':

@@ -41,11 +41,10 @@ def create_rpn_proposals(locs, scores, anchors, img_size):
     scores = scores[order]
 
     # clip bbox to image size
-    rois[rois < 0] = 0
-    rois[:, 0][rois[:, 0] > img_h - 1] = img_h - 1
-    rois[:, 1][rois[:, 1] > img_w - 1] = img_w - 1
-    rois[:, 2][rois[:, 2] > img_h - 1] = img_h - 1
-    rois[:, 3][rois[:, 3] > img_w - 1] = img_w - 1
+    rois[:, 0].clamp_(0, img_h - 1)
+    rois[:, 1].clamp_(0, img_w - 1)
+    rois[:, 2].clamp_(0, img_h - 1)
+    rois[:, 3].clamp_(0, img_w - 1)
 
     # remove boxes with size smaller than threshold
     height = rois[:, 2] - rois[:, 0]
@@ -100,6 +99,10 @@ class ROIAlign(nn.Module):
         ind_right = torch.ceil(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
         ind_up = torch.floor(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
         ind_down = torch.ceil(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
+        # ind_left = torch.floor(centers[:, 1]).long()
+        # ind_right = torch.ceil(centers[:, 1]).long()
+        # ind_up = torch.floor(centers[:, 0]).long()
+        # ind_down = torch.ceil(centers[:, 0]).long()
 
         # print(ind_left, ind_right, ind_up, ind_down)
         pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
@@ -133,12 +136,17 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
     w = rois[:, 3] - rois[:, 1] + 1
     roi_level = torch.log(torch.sqrt(h * w) / 224.0) / 0.693147  # divide by log2
     roi_level = torch.floor(roi_level + 4)
-    roi_level[roi_level < 2] = 2
+    # roi_level[roi_level < 2] = 2
+    # not using P2
+    roi_level[roi_level < 3] = 3
     roi_level[roi_level > 5] = 5
 
     roi_pool = []
     box_level = []
     for i, l in enumerate(range(2, 6)):
+        # not using P2
+        if l == 2:
+            continue
         if torch.sum(roi_level == l) == 0:
             continue
         idx_l = torch.nonzero(roi_level == l).squeeze()
@@ -219,7 +227,9 @@ class RPN(nn.Module):
         rpn_locs_list = []
         rpn_scores_list = []
         anchors_list = []
-        for i, x in enumerate(features):
+        # not using P2
+        for i in range(1, len(features)):
+            x = features[i]
             feature_h, feature_w = x.size()[2:4]
             anchor_base = generate_base_anchors(self.stride[i], self.ratios, self.scales)
             anchors = anchor_proposals(feature_h, feature_w, self.stride[i], anchor_base).view(-1, 4)

@@ -12,8 +12,8 @@ def generate_training_anchors(roi, gt_bbox, gt_label, num_sample=Config.roi_num_
                               pos_ratio=Config.roi_pos_ratio, pos_iou_thresh=Config.roi_pos_iou_thresh,
                               neg_iou_thresh_hi=Config.roi_neg_iou_thresh_hi,
                               neg_iou_thresh_lo=Config.roi_neg_iou_thresh_lo,
-                              loc_mean =  Config.loc_normalize_mean,
-                              loc_std = Config.loc_normalize_std):
+                              loc_mean=Config.loc_normalize_mean,
+                              loc_std=Config.loc_normalize_std):
     """
     generate ground truth label and location for sampled proposals
     :param roi: (N, 4) pytorch tensor; region of interest from rpn proposal
