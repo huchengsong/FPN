@@ -96,10 +96,10 @@ class ROIAlign(nn.Module):
         loc_y = Variable(torch.frac(centers[:, 0].expand(feature_size[0], feature_size[1], -1)))
         loc_x = Variable(torch.frac(centers[:, 1].expand(feature_size[0], feature_size[1], -1)))
 
-        ind_left = torch.floor(centers[:, 1]).long()
-        ind_right = torch.ceil(centers[:, 1]).long()
-        ind_up = torch.floor(centers[:, 0]).long()
-        ind_down = torch.ceil(centers[:, 0]).long()
+        ind_left = torch.floor(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
+        ind_right = torch.ceil(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
+        ind_up = torch.floor(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
+        ind_down = torch.ceil(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
 
         # print(ind_left, ind_right, ind_up, ind_down)
         pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
