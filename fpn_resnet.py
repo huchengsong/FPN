@@ -60,53 +60,60 @@ def create_rpn_proposals(locs, scores, anchors, img_size):
     return roi_selected
 
 
-def roi_align(features, rois, img_size, pool_out_size, sub_sample=2):
-    """
-    bilinear interpolation
-    :param features: pytorch Variable (1, C, H, W)
-    :param rois: pytorch tensor, (N, 4)
-    :param img_size: [H, W]
-    :param pool_out_size: size after ROI align, [H_out, W_out]
-    :param sub_sample: subsample number along an axis in a bin
-    :return: (N, C, H_out, W_out)
-    """
-    feature_size = list(features.size())
-    img_size = torch.cuda.FloatTensor(img_size)
-    feature_hw = torch.cuda.FloatTensor(feature_size[2:])
-    rois_in_features = rois * (feature_hw.repeat(2) - 1) / (img_size.repeat(2) - 1)
-    h_step = ((rois_in_features[:, 2] - rois_in_features[:, 0]) / (pool_out_size[0] * sub_sample))[:, None]
-    w_step = ((rois_in_features[:, 3] - rois_in_features[:, 1]) / (pool_out_size[1] * sub_sample))[:, None]
-    y_shift = torch.arange(0, pool_out_size[0] * sub_sample).cuda().expand(rois.size(0), -1) * h_step + \
-              h_step / 2 + rois_in_features[:, 0][:, None]
-    x_shift = torch.arange(0, pool_out_size[1] * sub_sample).cuda().expand(rois.size(0), -1) * w_step + \
-              w_step / 2 + rois_in_features[:, 1][:, None]
-    y_shift = y_shift.expand(pool_out_size[1] * sub_sample, -1, -1).permute(1, 2, 0)
-    x_shift = x_shift.expand(pool_out_size[0] * sub_sample, -1, -1).permute(1, 0, 2)
+class ROIAlign(nn.Module):
+    def __init__(self, pool_out_size, sub_sample=2):
+        super(ROIAlign, self).__init__()
+        self.pool_out_size = pool_out_size
+        self.sub_sample = sub_sample
 
-    centers = torch.stack((y_shift, x_shift), dim=3)
-    centers = centers.contiguous().view(-1, 2)  # (N, H, W, 2) -> (N*H*W, 2)
+    def forward(self, features, rois, img_size):
+        """
+        bilinear interpolation
+        :param features: pytorch Variable (1, C, H, W)
+        :param rois: pytorch tensor, (N, 4)
+        :param img_size: [H, W]
+        :param pool_out_size: size after ROI align, [H_out, W_out]
+        :param sub_sample: subsample number along an axis in a bin
+        :return: (N, C, H_out, W_out)
+        """
+        feature_size = list(features.size())
+        img_size = torch.cuda.FloatTensor(img_size)
+        feature_hw = torch.cuda.FloatTensor(feature_size[2:])
+        rois_in_features = rois * (feature_hw.repeat(2) - 1) / (img_size.repeat(2) - 1)
+        h_step = ((rois_in_features[:, 2] - rois_in_features[:, 0]) / (self.pool_out_size[0] * self.sub_sample))[:, None]
+        w_step = ((rois_in_features[:, 3] - rois_in_features[:, 1]) / (self.pool_out_size[1] * self.sub_sample))[:, None]
+        y_shift = torch.arange(0, self.pool_out_size[0] * self.sub_sample).cuda().expand(rois.size(0), -1) * h_step + \
+                h_step / 2 + rois_in_features[:, 0][:, None]
+        x_shift = torch.arange(0, self.pool_out_size[1] * self.sub_sample).cuda().expand(rois.size(0), -1) * w_step + \
+                w_step / 2 + rois_in_features[:, 1][:, None]
+        y_shift = y_shift.expand(self.pool_out_size[1] * self.sub_sample, -1, -1).permute(1, 2, 0)
+        x_shift = x_shift.expand(self.pool_out_size[0] * self.sub_sample, -1, -1).permute(1, 0, 2)
 
-    # bilinear interpolation
-    loc_y = Variable(torch.frac(centers[:, 0].expand(feature_size[0], feature_size[1], -1)))
-    loc_x = Variable(torch.frac(centers[:, 1].expand(feature_size[0], feature_size[1], -1)))
+        centers = torch.stack((y_shift, x_shift), dim=3)
+        centers = centers.contiguous().view(-1, 2)  # (N, H, W, 2) -> (N*H*W, 2)
 
-    ind_left = torch.floor(centers[:, 1]).long()
-    ind_right = torch.ceil(centers[:, 1]).long()
-    ind_up = torch.floor(centers[:, 0]).long()
-    ind_down = torch.ceil(centers[:, 0]).long()
+        # bilinear interpolation
+        loc_y = Variable(torch.frac(centers[:, 0].expand(feature_size[0], feature_size[1], -1)))
+        loc_x = Variable(torch.frac(centers[:, 1].expand(feature_size[0], feature_size[1], -1)))
 
-    #print(ind_left, ind_right, ind_up, ind_down)
-    pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
-               features[:, :, ind_down, ind_left] * loc_y * (1 - loc_x) + \
-               features[:, :, ind_up, ind_right] * (1 - loc_y) * loc_x + \
-               features[:, :, ind_down, ind_right] * loc_y * loc_x
+        ind_left = torch.floor(centers[:, 1]).long()
+        ind_right = torch.ceil(centers[:, 1]).long()
+        ind_up = torch.floor(centers[:, 0]).long()
+        ind_down = torch.ceil(centers[:, 0]).long()
 
-    pre_pool = pre_pool.view(feature_size[0] * feature_size[1], rois.size()[0],
-                             pool_out_size[0] * sub_sample, pool_out_size[1] * sub_sample).permute(1, 0, 2, 3)
-    max_pool = nn.MaxPool2d(kernel_size=sub_sample, stride=sub_sample, padding=0)
-    post_pool = max_pool(pre_pool)
+        # print(ind_left, ind_right, ind_up, ind_down)
+        pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
+                   features[:, :, ind_down, ind_left] * loc_y * (1 - loc_x) + \
+                   features[:, :, ind_up, ind_right] * (1 - loc_y) * loc_x + \
+                   features[:, :, ind_down, ind_right] * loc_y * loc_x
 
-    return post_pool
+        pre_pool = pre_pool.view(feature_size[0] * feature_size[1], rois.size()[0],
+                                 self.pool_out_size[0] * self.sub_sample,
+                                 self.pool_out_size[1] * self.sub_sample).permute(1, 0, 2, 3)
+        max_pool = nn.MaxPool2d(kernel_size=self.sub_sample, stride=self.sub_sample, padding=0)
+        post_pool = max_pool(pre_pool)
+
+        return post_pool
 
 
 def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
@@ -119,6 +126,8 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
     :return: pytorch Variable (N, C, H_out, W_out)
     """
     from roi_module import RoIPooling2D
+
+    roi_align = ROIAlign(pool_out_size, sub_sample=2)
 
     h = rois[:, 2] - rois[:, 0] + 1
     w = rois[:, 3] - rois[:, 1] + 1
@@ -134,7 +143,7 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
             continue
         idx_l = torch.nonzero(roi_level == l).squeeze()
         box_level.append(idx_l)
-        pool_l = roi_align(feature_list[i], rois[idx_l], img_size, pool_out_size, sub_sample=2)
+        pool_l = roi_align(feature_list[i], rois[idx_l], img_size)
 
         # using roi pooling (old method)
         # # TODO: write code to replace this
