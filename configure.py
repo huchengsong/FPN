@@ -23,7 +23,7 @@ class Config:
     # param for optimizer
     weight_decay = 0.0005
     lr_decay = 0.1
-    lr = 0.001
+    lr = 0.01  # 0.001
 
     # loc mean and std
     loc_normalize_mean = [0., 0., 0., 0.]

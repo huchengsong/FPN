@@ -102,6 +102,10 @@ def train(epochs, img_box_dict, pretrained_model=Config.load_path):
         print('mAP: ', map)
 
         # lr decay
+        if epoch == 5:
+            trainer.scale_lr(Config.lr_decay)
+
+        # lr decay
         if epoch == 9:
             trainer.scale_lr(Config.lr_decay)
 

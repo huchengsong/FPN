@@ -95,14 +95,14 @@ class ROIAlign(nn.Module):
         loc_y = Variable(torch.frac(centers[:, 0].expand(feature_size[0], feature_size[1], -1)))
         loc_x = Variable(torch.frac(centers[:, 1].expand(feature_size[0], feature_size[1], -1)))
 
-        ind_left = torch.floor(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
-        ind_right = torch.ceil(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
-        ind_up = torch.floor(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
-        ind_down = torch.ceil(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
-        # ind_left = torch.floor(centers[:, 1]).long()
-        # ind_right = torch.ceil(centers[:, 1]).long()
-        # ind_up = torch.floor(centers[:, 0]).long()
-        # ind_down = torch.ceil(centers[:, 0]).long()
+        # ind_left = torch.floor(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
+        # ind_right = torch.ceil(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
+        # ind_up = torch.floor(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
+        # ind_down = torch.ceil(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
+        ind_left = torch.floor(centers[:, 1]).long()
+        ind_right = torch.ceil(centers[:, 1]).long()
+        ind_up = torch.floor(centers[:, 0]).long()
+        ind_down = torch.ceil(centers[:, 0]).long()
 
         # print(ind_left, ind_right, ind_up, ind_down)
         pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
@@ -128,7 +128,6 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
     :param img_size: [H, W]
     :return: pytorch Variable (N, C, H_out, W_out)
     """
-    from roi_module import RoIPooling2D
 
     roi_align = ROIAlign(pool_out_size, sub_sample=2)
 
@@ -138,31 +137,21 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
     roi_level = torch.floor(roi_level + 4)
     # roi_level[roi_level < 2] = 2
     # not using P2
-    roi_level[roi_level < 3] = 3
+    roi_level[roi_level < 2] = 2
     roi_level[roi_level > 5] = 5
 
     roi_pool = []
     box_level = []
     for i, l in enumerate(range(2, 6)):
-        # not using P2
-        if l == 2:
-            continue
+        # # not using P2
+        # if l == 2:
+        #     continue
         if torch.sum(roi_level == l) == 0:
             continue
         idx_l = torch.nonzero(roi_level == l).squeeze()
         box_level.append(idx_l)
         pool_l = roi_align(feature_list[i], rois[idx_l], img_size)
 
-        # using roi pooling (old method)
-        # # TODO: write code to replace this
-        # spatial_scale = feature_list[i].size(2) / img_size[0]
-        # roi_pooling = RoIPooling2D(pool_out_size[0], pool_out_size[1], spatial_scale)
-        # sub_rois = rois[idx_l]
-        # roi_indices = torch.cuda.FloatTensor(sub_rois.size(0)).fill_(0)
-        # indices_and_rois = torch.stack([roi_indices, sub_rois[:, 0], sub_rois[:, 1], sub_rois[:, 2], sub_rois[:, 3]],
-        #                                dim=1)
-        # indices_and_rois = Variable(indices_and_rois[:, [0, 2, 1, 4, 3]]).contiguous()
-        # pool_l = roi_pooling(feature_list[i], indices_and_rois)
         roi_pool.append(pool_l)
 
     roi_pool = torch.cat(roi_pool, 0)
@@ -228,7 +217,7 @@ class RPN(nn.Module):
         rpn_scores_list = []
         anchors_list = []
         # not using P2
-        for i in range(1, len(features)):
+        for i in range(0, len(features)):
             x = features[i]
             feature_h, feature_w = x.size()[2:4]
             anchor_base = generate_base_anchors(self.stride[i], self.ratios, self.scales)
