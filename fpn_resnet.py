@@ -99,13 +99,7 @@ class ROIAlign(nn.Module):
         ind_right = torch.ceil(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
         ind_up = torch.floor(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
         ind_down = torch.ceil(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
-        # ind_left = torch.floor(centers[:, 1]).long()
-        # ind_right = torch.ceil(centers[:, 1]).long()
-        # ind_up = torch.floor(centers[:, 0]).long()
-        # ind_down = torch.ceil(centers[:, 0]).long()
 
-
-        # print(ind_left, ind_right, ind_up, ind_down)
         pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
                    features[:, :, ind_down, ind_left] * loc_y * (1 - loc_x) + \
                    features[:, :, ind_up, ind_right] * (1 - loc_y) * loc_x + \
@@ -120,13 +114,14 @@ class ROIAlign(nn.Module):
         return post_pool
 
 
-def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
+def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size, pyramid_levels):
     """
     roi pooling for each pyramid level
     :param feature_list: list of (1, C, Hn, Wn) pytorch Variable, [p2, p3, p4, p5, p6]
     :param rois: pytorch tensor, (N, 4)
     :param pool_out_size: size after ROI align, [H_out, W_out]
     :param img_size: [H, W]
+    :param pyramid_levels: list of pyramid levels to be used
     :return: pytorch Variable (N, C, H_out, W_out)
     """
 
@@ -136,22 +131,18 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size):
     w = rois[:, 3] - rois[:, 1] + 1
     roi_level = torch.log(torch.sqrt(h * w) / 224.0) / 0.693147  # divide by log2
     roi_level = torch.floor(roi_level + 4)
-    # roi_level[roi_level < 2] = 2
-    # not using P2
-    roi_level[roi_level < 2] = 2
-    roi_level[roi_level > 5] = 5
+
+    roi_level[roi_level < min(pyramid_levels)] = min(pyramid_levels)
+    roi_level[roi_level > max(pyramid_levels)] = max(pyramid_levels)
 
     roi_pool = []
     box_level = []
-    for i, l in enumerate(range(2, 6)):
-        # # not using P2
-        # if l == 2:
-        #     continue
+    for l in pyramid_levels:
         if torch.sum(roi_level == l) == 0:
             continue
         idx_l = torch.nonzero(roi_level == l).squeeze()
         box_level.append(idx_l)
-        pool_l = roi_align(feature_list[i], rois[idx_l], img_size)
+        pool_l = roi_align(feature_list[l - 2], rois[idx_l], img_size)
 
         roi_pool.append(pool_l)
 
@@ -204,11 +195,12 @@ class RPN(nn.Module):
         initialize_params(self.score, 0, 0.01)
         initialize_params(self.loc, 0, 0.01)
 
-    def forward(self, features, img_size):
+    def forward(self, features, img_size, pyramid_levels=Config.rpn_pyramid_levels):
         """
         forward function of RPN
         :param features: list of pytroch Variable (1, C, Hn, Wn), [p2, p3, p4, p5, p6]
         :param img_size: [H, W]
+        :param pyramid_levels: tuple of pyramid levels to be used
         :return: torch Variable: rpn_locs, (N, 4),
                                  rpn_scores, (N, 2)
                 torch tensors: rois, (K, 4),
@@ -217,8 +209,9 @@ class RPN(nn.Module):
         rpn_locs_list = []
         rpn_scores_list = []
         anchors_list = []
-        # not using P2
-        for i in range(0, len(features)):
+
+        for i in pyramid_levels:
+            i = i - 2
             x = features[i]
             feature_h, feature_w = x.size()[2:4]
             anchor_base = generate_base_anchors(self.stride[i], self.ratios, self.scales)
@@ -259,16 +252,17 @@ class ROIHead(nn.Module):
         self.num_class = num_class
         self.pool_size = pool_size
 
-    def forward(self, x, rois, img_size):
+    def forward(self, x, rois, img_size, pyramid_levels=Config.roi_pyramid_levels):
         """
         retrun class and location prediction for each roi
         :param x: pytorch Variable, extracted feature list, (1, C, Hn, Wn), [p2, p3, p4, p5, p6]
         :param rois: pytorch tensor, rois generated from rpn proposals, (N, 4)
         :param img_size: image size [H, W]
+        :param pyramid_levels: list of pyramid levels to be used in roi pooling
         :return: pytorch Variable, roi_cls_locs, roi_scores
         """
         # replaced original roi_pooling with roi_align
-        pool_result = pyramid_roi_pooling(x, rois, img_size, self.pool_size)
+        pool_result = pyramid_roi_pooling(x, rois, img_size, self.pool_size, pyramid_levels)
         pool_result = pool_result.view(pool_result.size(0), -1).contiguous()
 
         fc = self.classifier(pool_result)
