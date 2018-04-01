@@ -103,6 +103,7 @@ class ROIAlign(nn.Module):
         ind_right = torch.ceil(centers[:, 1]).long()
         ind_up = torch.floor(centers[:, 0]).long()
         ind_down = torch.ceil(centers[:, 0]).long()
+        print(ind_left, ind_right, ind_down, ind_up)
 
         # print(ind_left, ind_right, ind_up, ind_down)
         pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
