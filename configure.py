@@ -13,7 +13,7 @@ class Config:
 
     # anchor params
     ratios = [0.5, 1., 2.]
-    scales = [8, 16]
+    scales = [8]
     stride = [4, 8, 16, 32, 64]
 
     # sigma for l1_smooth_loss
@@ -23,7 +23,7 @@ class Config:
     # param for optimizer
     weight_decay = 0.0005
     lr_decay = 0.1
-    lr = 0.005
+    lr = 0.001
 
     # loc mean and std
     loc_normalize_mean = [0., 0., 0., 0.]
@@ -36,7 +36,7 @@ class Config:
     min_size = 16
 
     # params for creating rois for fast-rcnn training
-    roi_num_sample = 360  # 128
+    roi_num_sample = 128
     roi_pos_ratio = 0.25
     roi_pos_iou_thresh = 0.5
     roi_neg_iou_thresh_hi = 0.5
@@ -59,8 +59,8 @@ class Config:
     eval_num = float("inf")
 
     # pyramid levels to be used
-    rpn_pyramid_levels = [3, 4, 5, 6]  # not using P2
-    roi_pyramid_levels = [3, 4, 5]  # not using P2
+    rpn_pyramid_levels = [4, 5, 6]
+    roi_pyramid_levels = [2, 3, 4, 5]  # not using P2
 
     # model
     load_path = None

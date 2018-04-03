@@ -49,9 +49,9 @@ def create_rpn_proposals(locs, scores, anchors, img_size):
     # remove boxes with size smaller than threshold
     height = rois[:, 2] - rois[:, 0]
     width = rois[:, 3] - rois[:, 1]
-    keep = torch.nonzero((height >= min_size) & (width >= min_size))[:, 0]
-    rois = rois[keep, :].contiguous()
-    scores = scores[keep].contiguous()
+    keep = torch.nonzero((height >= min_size) & (width >= min_size)).squeeze()
+    rois = rois[keep, :]
+    scores = scores[keep]
 
     # nms
     _, roi_selected = non_maximum_suppression_rpn(rois, nms_thresh, scores, num_post_nms)
@@ -65,20 +65,16 @@ class ROIAlign(nn.Module):
         self.pool_out_size = pool_out_size
         self.sub_sample = sub_sample
 
-    def forward(self, features, rois, img_size):
+    def forward(self, features, rois, ratio):
         """
         bilinear interpolation
         :param features: pytorch Variable (1, C, H, W)
         :param rois: pytorch tensor, (N, 4)
-        :param img_size: [H, W]
-        :param pool_out_size: size after ROI align, [H_out, W_out]
-        :param sub_sample: subsample number along an axis in a bin
+        :param ratio: ratio of feature size to image size
         :return: (N, C, H_out, W_out)
         """
         feature_size = list(features.size())
-        img_size = torch.cuda.FloatTensor(img_size)
-        feature_hw = torch.cuda.FloatTensor(feature_size[2:])
-        rois_in_features = rois * (feature_hw.repeat(2) - 1) / (img_size.repeat(2) - 1)
+        rois_in_features = rois * ratio
         h_step = ((rois_in_features[:, 2] - rois_in_features[:, 0]) / (self.pool_out_size[0] * self.sub_sample))[:, None]
         w_step = ((rois_in_features[:, 3] - rois_in_features[:, 1]) / (self.pool_out_size[1] * self.sub_sample))[:, None]
         y_shift = torch.arange(0, self.pool_out_size[0] * self.sub_sample).cuda().expand(rois.size(0), -1) * h_step + \
@@ -114,14 +110,14 @@ class ROIAlign(nn.Module):
         return post_pool
 
 
-def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size, pyramid_levels):
+def pyramid_roi_pooling(feature_list, rois, pool_out_size, pyramid_levels, stride):
     """
     roi pooling for each pyramid level
     :param feature_list: list of (1, C, Hn, Wn) pytorch Variable, [p2, p3, p4, p5, p6]
     :param rois: pytorch tensor, (N, 4)
     :param pool_out_size: size after ROI align, [H_out, W_out]
-    :param img_size: [H, W]
     :param pyramid_levels: list of pyramid levels to be used
+    :param stride: list of stride for each pyramid level
     :return: pytorch Variable (N, C, H_out, W_out)
     """
 
@@ -142,8 +138,8 @@ def pyramid_roi_pooling(feature_list, rois, img_size, pool_out_size, pyramid_lev
             continue
         idx_l = torch.nonzero(roi_level == l).squeeze()
         box_level.append(idx_l)
-        pool_l = roi_align(feature_list[l - 2], rois[idx_l], img_size)
-
+        ratio = 1 / stride[l - 2]
+        pool_l = roi_align(feature_list[l - 2], rois[idx_l], ratio)
         roi_pool.append(pool_l)
 
     roi_pool = torch.cat(roi_pool, 0)
@@ -172,7 +168,7 @@ class FPNResNet(FPN):
             raise Exception('layer number must be one of 18, 34, 50, 101, 152')
 
         rpn = RPN(256, 512, ratios, scales, stride)
-        head = ROIHead(num_classes, [7, 7])
+        head = ROIHead(num_classes, [7, 7], stride)
 
         super(FPNResNet, self).__init__(model, rpn, head, num_classes)
 
@@ -236,8 +232,9 @@ class RPN(nn.Module):
 
 
 class ROIHead(nn.Module):
-    def __init__(self, num_class, pool_size):
+    def __init__(self, num_class, pool_size, stride):
         super(ROIHead, self).__init__()
+        self.stride = stride
         self.classifier = nn.Sequential(
             nn.Linear(12544, 1024),
             nn.ReLU(),
@@ -262,7 +259,7 @@ class ROIHead(nn.Module):
         :return: pytorch Variable, roi_cls_locs, roi_scores
         """
         # replaced original roi_pooling with roi_align
-        pool_result = pyramid_roi_pooling(x, rois, img_size, self.pool_size, pyramid_levels)
+        pool_result = pyramid_roi_pooling(x, rois, self.pool_size, pyramid_levels, self.stride)
         pool_result = pool_result.view(pool_result.size(0), -1).contiguous()
 
         fc = self.classifier(pool_result)
