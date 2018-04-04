@@ -139,8 +139,19 @@ def pyramid_roi_pooling(feature_list, rois, pool_out_size, pyramid_levels, strid
         idx_l = torch.nonzero(roi_level == l).squeeze()
         box_level.append(idx_l)
         ratio = 1 / stride[l - 2]
-        pool_l = roi_align(feature_list[l - 2], rois[idx_l], ratio)
+        # pool_l = roi_align(feature_list[l - 2], rois[idx_l], ratio)
+        # roi_pool.append(pool_l)
+
+        # TODO: this is for testing
+        from roi_module import RoIPooling2D
+        roi_pooling = RoIPooling2D(pool_out_size[0], pool_out_size[1], ratio)
+        roi_l = rois[idx_l]
+        roi_indices = torch.cuda.FloatTensor(roi_l.size()[0]).fill_(0)
+        indices_and_rois = torch.stack([roi_indices, roi_l[:, 0], roi_l[:, 1], roi_l[:, 2], roi_l[:, 3]], dim=1)
+        indices_and_rois = Variable(indices_and_rois[:, [0, 2, 1, 4, 3]])
+        pool_l = roi_pooling(feature_list[l - 2], indices_and_rois)
         roi_pool.append(pool_l)
+        # TODO: end of testing
 
     roi_pool = torch.cat(roi_pool, 0)
     box_level = torch.cat(box_level, 0)
