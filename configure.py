@@ -8,8 +8,8 @@ class Config:
                  'tvmonitor']
 
     img_box_dict = '../VOCdevkit/img_box_dict.npy'
-    img_min_size = 600  # image resize
-    img_max_size = 1000  # image resize
+    img_min_size = 800  # 600  # image resize
+    img_max_size = 1500  # 1000  # image resize
 
     # anchor params
     ratios = [0.5, 1., 2.]

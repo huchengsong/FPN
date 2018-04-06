@@ -55,7 +55,7 @@ class FasterRCNNTrainer(nn.Module):
     def train_step(self, img_tensor, img_info):
         self.optimizer.zero_grad()
         loss = self.forward(img_tensor, img_info)
-        print('total loss', loss.data.cpu().numpy())
+        # print('total loss', loss.data.cpu().numpy())
         loss.backward()
         self.optimizer.step()
 

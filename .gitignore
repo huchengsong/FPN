@@ -10,3 +10,6 @@ __pycache__/fpn.cpython-36.pyc
 *.xml
 .idea/workspace.xml
 *.pyc
+*.pyc
+*.xml
+.idea/workspace.xml
