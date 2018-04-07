@@ -87,16 +87,25 @@ def generate_anchor_loc_label(anchor, gt_bbox, img_size,
     """
     num_anchors = anchor.size()[0]
     gt_bbox = torch.from_numpy(gt_bbox).cuda()
-    # cross-boundary anchors will not be used
-    ind_inside_img = torch.nonzero(
-        (anchor[:, 0] >= 0) &
-        (anchor[:, 1] >= 0) &
-        (anchor[:, 2] <= img_size[0]) &  # height
-        (anchor[:, 3] <= img_size[1])  # width
-    ).squeeze_()
 
-    selected_anchors = anchor[ind_inside_img, :]
-    labels = torch.cuda.LongTensor(len(ind_inside_img)).fill_(-1)
+    # # cross-boundary anchors will not be used
+    # ind_inside_img = torch.nonzero(
+    #     (anchor[:, 0] >= 0) &
+    #     (anchor[:, 1] >= 0) &
+    #     (anchor[:, 2] <= img_size[0]) &  # height
+    #     (anchor[:, 3] <= img_size[1])  # width
+    # ).squeeze_()
+    # selected_anchors = anchor[ind_inside_img, :]
+    # labels = torch.cuda.LongTensor(len(ind_inside_img)).fill_(-1)
+
+    # TODO: test clipping anchors
+    anchor[:, 0].clamp_(0, img_size[0])
+    anchor[:, 2].clamp_(0, img_size[0])
+    anchor[:, 1].clamp_(0, img_size[1])
+    anchor[:, 3].clamp_(0, img_size[1])
+    selected_anchors = anchor
+    labels = torch.cuda.LongTensor(selected_anchors.size(0)).fill_(-1)
+    # TODO: the above is for testing
 
     iou_matrix = bbox_IoU_gpu(gt_bbox, selected_anchors)
     max_iou_each_anchor, ind_max_each_anchor = iou_matrix.max(dim=0)
@@ -132,9 +141,13 @@ def generate_anchor_loc_label(anchor, gt_bbox, img_size,
     gt_box_parameterized = box_parameterize_gpu(
         gt_bbox[ind_max_each_anchor, :], selected_anchors)
 
-    anchor_labels = _unmap(labels, num_anchors, ind_inside_img, fill=-1)
-    anchor_gt_parameterized = _unmap(gt_box_parameterized, num_anchors, ind_inside_img, fill=0)
+    # anchor_labels = _unmap(labels, num_anchors, ind_inside_img, fill=-1)
+    # anchor_gt_parameterized = _unmap(gt_box_parameterized, num_anchors, ind_inside_img, fill=0)
 
+    # TODO: this is for testing
+    anchor_labels = labels
+    anchor_gt_parameterized = gt_box_parameterized
+    # TODO: above is for testing
     return anchor_labels, anchor_gt_parameterized
 
 

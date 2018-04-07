@@ -8,8 +8,8 @@ class Config:
                  'tvmonitor']
 
     img_box_dict = '../VOCdevkit/img_box_dict.npy'
-    img_min_size = 600  # 600  # image resize
-    img_max_size = 1000  # 1000  # image resize
+    img_min_size = 300  # 600  # image resize
+    img_max_size = 500  # 1000  # image resize
 
     # anchor params
     ratios = [0.5, 1., 2.]
@@ -59,7 +59,7 @@ class Config:
     eval_num = float("inf")
 
     # pyramid levels to be used
-    rpn_pyramid_levels = [4, 5, 6]
+    rpn_pyramid_levels = [3, 4, 5, 6]
     roi_pyramid_levels = [2, 3, 4, 5]  # not using P2
 
     # model

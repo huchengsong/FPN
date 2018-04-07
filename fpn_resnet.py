@@ -46,12 +46,14 @@ def create_rpn_proposals(locs, scores, anchors, img_size):
     rois[:, 2].clamp_(0, img_h - 1)
     rois[:, 3].clamp_(0, img_w - 1)
 
-    # remove boxes with size smaller than threshold
-    height = rois[:, 2] - rois[:, 0]
-    width = rois[:, 3] - rois[:, 1]
-    keep = torch.nonzero((height >= min_size) & (width >= min_size)).squeeze()
-    rois = rois[keep, :]
-    scores = scores[keep]
+
+    # TODO: tesing removing this code
+    # # remove boxes with size smaller than threshold
+    # height = rois[:, 2] - rois[:, 0]
+    # width = rois[:, 3] - rois[:, 1]
+    # keep = torch.nonzero((height >= min_size) & (width >= min_size)).squeeze()
+    # rois = rois[keep, :]
+    # scores = scores[keep]
 
     # nms
     _, roi_selected = non_maximum_suppression_rpn(rois, nms_thresh, scores, num_post_nms)
