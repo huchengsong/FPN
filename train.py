@@ -90,6 +90,17 @@ def train(epochs, img_box_dict, pretrained_model=Config.load_path):
         trainer.load(pretrained_model)
 
     dict_train, dict_val = generate_train_val_data(img_box_dict, p_train=0.95)
+
+    # train rpn
+    for epoch in range(5):
+        print('epoch: ', epoch)
+        for i, [img_dir, img_info] in tqdm(enumerate(dict_train.items())):
+            img, img_info = rescale_image(img_dir, img_info, flip=True)
+            img_tensor = create_img_tensor(img)
+            trainer.train_step(img_tensor, img_info, train_rpn=True, train_rcnn=False)
+        trainer.save('faster_rcnn_model.pt')
+
+    # train together
     for epoch in range(epochs):
         print('epoch: ', epoch)
         for i, [img_dir, img_info] in tqdm(enumerate(dict_train.items())):

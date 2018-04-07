@@ -8,8 +8,8 @@ class Config:
                  'tvmonitor']
 
     img_box_dict = '../VOCdevkit/img_box_dict.npy'
-    img_min_size = 800  # 600  # image resize
-    img_max_size = 1500  # 1000  # image resize
+    img_min_size = 600  # 600  # image resize
+    img_max_size = 1000  # 1000  # image resize
 
     # anchor params
     ratios = [0.5, 1., 2.]
@@ -49,7 +49,7 @@ class Config:
     rpn_pos_ratio = 0.5
 
     # training
-    epoch = 10
+    epoch = 14
 
     # predict param
     score_thresh = 0.05

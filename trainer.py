@@ -20,7 +20,7 @@ class FasterRCNNTrainer(nn.Module):
         self.loc_normalize_mean = Config.loc_normalize_mean
         self.loc_normalize_std = Config.loc_normalize_std
 
-    def forward(self, img_tensor, img_info):
+    def forward(self, img_tensor, img_info, rpn=True, rcnn=True):
         img_size = img_info['img_size']
         features = self.fpn_resnet.extractor(img_tensor)
 
@@ -30,31 +30,33 @@ class FasterRCNNTrainer(nn.Module):
 
         # RPN loss
         rpn_locs, rpn_scores, rois, anchors = self.fpn_resnet.rpn(features, img_size)
-        gt_rpn_label, gt_rpn_loc = generate_anchor_loc_label(anchors, gt_bbox, img_size)
-        rpn_cls_loss, rpn_loc_loss = rpn_loss(rpn_scores, rpn_locs,
-                                              gt_rpn_loc, gt_rpn_label,
-                                              self.rpn_sigma)
+        if rpn:
+            gt_rpn_label, gt_rpn_loc = generate_anchor_loc_label(anchors, gt_bbox, img_size)
+            rpn_cls_loss, rpn_loc_loss = rpn_loss(rpn_scores, rpn_locs,
+                                                gt_rpn_loc, gt_rpn_label,
+                                                self.rpn_sigma)
 
-        # print('rpn_cls_loss', rpn_cls_loss.data.cpu().numpy(),
-        #       'rpn_loc_loss', rpn_loc_loss.data.cpu().numpy())
+        if rcnn:
+            # generate proposals from rpn rois
+            sampled_roi, gt_roi_loc, gt_roi_label = generate_training_anchors(rois, gt_bbox, gt_label)
 
-        # generate proposals from rpn rois
-        sampled_roi, gt_roi_loc, gt_roi_label = generate_training_anchors(rois, gt_bbox, gt_label)
+            # ROI loss
+            roi_cls_loc, roi_score = self.fpn_resnet.head(features, sampled_roi, img_size)
+            roi_cls_loss, roi_loc_loss = fast_rcnn_loss(roi_score, roi_cls_loc,
+                                                        gt_roi_loc, gt_roi_label,
+                                                        self.roi_sigma)
+        if rpn and not rcnn:
+            return rpn_cls_loss + rpn_loc_loss
+        if not rpn and rcnn:
+            return roi_cls_loss + roi_loc_loss
+        if rpn and rcnn:
+            return rpn_cls_loss + rpn_loc_loss + roi_cls_loss + roi_loc_loss
+        if not rpn and not rcnn:
+            raise Exception('at least one needs to be true between RPN and RCNN')
 
-        # ROI loss
-        roi_cls_loc, roi_score = self.fpn_resnet.head(features, sampled_roi, img_size)
-        roi_cls_loss, roi_loc_loss = fast_rcnn_loss(roi_score, roi_cls_loc,
-                                                    gt_roi_loc, gt_roi_label,
-                                                    self.roi_sigma)
-
-        # print('roi_cls_loss', roi_cls_loss.data.cpu().numpy(),
-        #       'roi_loc_loss', roi_loc_loss.data.cpu().numpy())
-
-        return rpn_cls_loss + rpn_loc_loss + roi_cls_loss + roi_loc_loss
-
-    def train_step(self, img_tensor, img_info):
+    def train_step(self, img_tensor, img_info, train_rpn=True, train_rcnn=True):
         self.optimizer.zero_grad()
-        loss = self.forward(img_tensor, img_info)
+        loss = self.forward(img_tensor, img_info, train_rpn, train_rcnn)
         # print('total loss', loss.data.cpu().numpy())
         loss.backward()
         self.optimizer.step()
