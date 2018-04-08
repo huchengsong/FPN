@@ -13,7 +13,7 @@ class Config:
 
     # anchor params
     ratios = [0.5, 1., 2.]
-    scales = [8]
+    scales = [16, 32]
     stride = [4, 8, 16, 32, 64]
 
     # sigma for l1_smooth_loss
