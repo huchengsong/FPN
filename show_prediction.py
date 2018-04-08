@@ -1,15 +1,15 @@
 import cv2
-import os
 import torch
 from fpn_resnet import FPNResNet
+from tqdm import tqdm
+import numpy as np
 
 from configure import Config
 from train import create_img_tensor
+from rescale_image import rescale_image
 
-folder_dir = '../VOCtest2007/VOC2007/JPEGImages/'
 
-
-def show(num):
+def show(test_dict):
     # change score_thresh for visualization
     Config.score_thresh = 0.7
     key = Config.class_key
@@ -18,25 +18,27 @@ def show(num):
     state_dict = torch.load('faster_rcnn_model.pt')
     faster_rcnn.load_state_dict(state_dict['model'])
 
-    for i in range(num):
-        for file in os.listdir(folder_dir):
-            filename = os.fsdecode(file)
-            img_dir = folder_dir + filename
-            img = cv2.imread(img_dir)
-            img = process_image(img)
-            img_tensor = create_img_tensor(img)
-            box, score, label = faster_rcnn.predict(img_tensor)
-            for i, b in enumerate(box):
-                ymin, xmin, ymax, xmax = [int(j) for j in b]
-                cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
-                cv2.putText(img,
-                            key[label[i]] + str(score[i]),
-                            (xmin, ymin),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                            (0, 0, 255))
-            cv2.imshow('image', img[:, :, [2, 1, 0]])
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+    for i, [img_dir, img_info] in tqdm(enumerate(test_dict.items())):
+        img, img_info = rescale_image(img_dir, img_info, flip=False)
+        img_tensor = create_img_tensor(img)
+        box, score, label = faster_rcnn.predict(img_tensor)
+        gt_bbox = np.array(img_info['objects'])[:, 1:5].astype(np.float32)
+
+        for k, b in enumerate(gt_bbox):
+            ymin, xmin, ymax, xmax = [int(k) for k in b]
+            cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 1)
+
+        for j, b in enumerate(box):
+            ymin, xmin, ymax, xmax = [int(j) for j in b]
+            cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 1)
+            cv2.putText(img,
+                        key[label[j]] + str(score[j]),
+                        (xmin, ymin),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        (0, 255, 0))
+        cv2.imshow('image', img[:, :, [2, 1, 0]])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 def process_image(image):
@@ -69,4 +71,8 @@ def process_image(image):
 
 
 if __name__ == '__main__':
-    show(100)
+    from train import voc_generate_img_box_dict
+    xml_dir = '../VOCtest2007/VOC2007/Annotations'
+    img_dir = '../VOCtest2007/VOC2007/JPEGImages'
+    test_dict = voc_generate_img_box_dict(xml_dir, img_dir)
+    show(test_dict)
