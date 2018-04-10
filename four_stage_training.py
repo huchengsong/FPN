@@ -7,7 +7,7 @@ from voc_parse_xml import voc_generate_img_box_dict
 from train import train
 from train import evaluation
 from train import create_img_tensor
-
+import numpy as np
 
 def four_stage_training(epochs=[1, 1, 1, 1]):
     # train
@@ -33,7 +33,9 @@ def four_stage_training(epochs=[1, 1, 1, 1]):
         features = fpn_resnet.extractor(img_tensor)
         _, _, rois, _ = fpn_resnet.rpn(features, img_size)
         roi_proposals[img_dir] = rois.cpu().numpy()
+    np.save('roi_proposals', roi_proposals)
 
+    roi_proposals = np.load('roi_proposals')
     # train rcnn
     print('stage 2:')
     train(epochs[1], img_box_dict, pretrained_model=None, save_path='second_stage.pt',
