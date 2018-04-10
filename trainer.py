@@ -38,11 +38,11 @@ class FasterRCNNTrainer(nn.Module):
 
         if rcnn:
             # generate proposals from rpn rois
-            if rois_from_rpn and not rpn:
+            if rois_from_rpn is not None and not rpn:
                 rois = rois_from_rpn
-            elif not rois_from_rpn and not rpn:
+            elif rois_from_rpn is None and not rpn:
                 raise Exception('when train_rcnn is true and train_rpn is false, roi proposals must be provided')
-            elif rois_from_rpn and rpn:
+            elif rois_from_rpn is not None and rpn:
                 raise Exception('train_rpn is true and roi proposals are provided. not sure which set of rois to use')
             sampled_roi, gt_roi_loc, gt_roi_label = generate_training_anchors(rois, gt_bbox, gt_label)
 

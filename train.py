@@ -130,6 +130,8 @@ def train(epochs, img_box_dict, pretrained_model, save_path,
                 trainer.train_step(img_tensor, img_info, img_rois, train_rpn, train_rcnn)
             else:
                 trainer.train_step(img_tensor, img_info, None, train_rpn, train_rcnn)
+            if i == 500:
+                break
         trainer.save(save_path, save_optimizer=False)
         if validate:
             map = evaluation(dict_val, fpn_resnet)
