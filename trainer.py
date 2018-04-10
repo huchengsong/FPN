@@ -45,7 +45,6 @@ class FasterRCNNTrainer(nn.Module):
             elif rois_from_rpn is not None and rpn:
                 raise Exception('train_rpn is true and roi proposals are provided. not sure which set of rois to use')
             sampled_roi, gt_roi_loc, gt_roi_label = generate_training_anchors(rois, gt_bbox, gt_label)
-
             # ROI loss
             roi_cls_loc, roi_score = self.fpn_resnet.head(features, sampled_roi, img_size)
             roi_cls_loss, roi_loc_loss = fast_rcnn_loss(roi_score, roi_cls_loc,

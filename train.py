@@ -122,10 +122,14 @@ def train(epochs, img_box_dict, pretrained_model=None, save_path=None,
             img_size = list(img_info['img_size'])
             img_tensor = create_img_tensor(img)
             if rpn_rois:
-                img_rois = torch.from_numpy(rpn_rois[img_dir]).cuda()
+                img_rois = rpn_rois[img_dir]
                 if flipped:
-                    img_rois[:, 1] = img_size[1] - img_rois[:, 1]
-                    img_rois[:, 3] = img_size[1] - img_rois[:, 3]
+                    max = img_size[1] - img_rois[:, 1]
+                    min = img_size[1] - img_rois[:, 3]
+                    img_rois[:, 1] = min
+                    img_rois[:, 3] = max
+
+                img_rois = torch.from_numpy(img_rois).cuda()
                 trainer.train_step(img_tensor, img_info, img_rois, train_rpn, train_rcnn)
             else:
                 trainer.train_step(img_tensor, img_info, None, train_rpn, train_rcnn)

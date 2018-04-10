@@ -15,27 +15,27 @@ def four_stage_training(epochs=[1, 1, 1, 1]):
     img_dir = '../VOCdevkit2007/VOC2007/JPEGImages'
     img_box_dict = voc_generate_img_box_dict(xml_dir, img_dir)
 
-    # train rpn
-    print('stage 1:')
-    train(epochs[0], img_box_dict, pretrained_model=None, save_path='first_stage.pt',
-          rpn_rois=None, train_rpn=True, train_rcnn=False, validate=False,
-          lock_grad_for_rpn=False, lock_grad_for_rcnn=False)
+    # # train rpn
+    # print('stage 1:')
+    # train(epochs[0], img_box_dict, pretrained_model=None, save_path='first_stage.pt',
+    #       rpn_rois=None, train_rpn=True, train_rcnn=False, validate=False,
+    #       lock_grad_for_rpn=False, lock_grad_for_rcnn=False)
+    #
+    # # generate rois
+    # fpn_resnet = FPNResNet().cuda()
+    # state_dict = torch.load('first_stage.pt')
+    # fpn_resnet.load_state_dict(state_dict['model'])
+    # roi_proposals = {}
+    # for i, [img_dir, img_info] in tqdm(enumerate(img_box_dict.items())):
+    #     img, img_info = rescale_image(img_dir, img_info, flip=False)
+    #     img_size = list(img_info['img_size'])
+    #     img_tensor = create_img_tensor(img)
+    #     features = fpn_resnet.extractor(img_tensor)
+    #     _, _, rois, _ = fpn_resnet.rpn(features, img_size)
+    #     roi_proposals[img_dir] = rois.cpu().numpy()
+    # np.save('roi_proposals', roi_proposals)
 
-    # generate rois
-    fpn_resnet = FPNResNet().cuda()
-    state_dict = torch.load('first_stage.pt')
-    fpn_resnet.load_state_dict(state_dict['model'])
-    roi_proposals = {}
-    for i, [img_dir, img_info] in tqdm(enumerate(img_box_dict.items())):
-        img, img_info = rescale_image(img_dir, img_info, flip=False)
-        img_size = list(img_info['img_size'])
-        img_tensor = create_img_tensor(img)
-        features = fpn_resnet.extractor(img_tensor)
-        _, _, rois, _ = fpn_resnet.rpn(features, img_size)
-        roi_proposals[img_dir] = rois.cpu().numpy()
-    np.save('roi_proposals', roi_proposals)
-
-    roi_proposals = np.load('roi_proposals')
+    roi_proposals = np.load('roi_proposals.npy')[()]
     # train rcnn
     print('stage 2:')
     train(epochs[1], img_box_dict, pretrained_model=None, save_path='second_stage.pt',
