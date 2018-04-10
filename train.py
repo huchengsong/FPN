@@ -79,7 +79,7 @@ def evaluation(eval_dict, fpn_resnet, test_num=Config.eval_num):
     return mAP
 
 
-def train(epochs, img_box_dict, pretrained_model, save_path,
+def train(epochs, img_box_dict, pretrained_model=None, save_path=None,
           rpn_rois=None, train_rpn=True, train_rcnn=True, validate=False,
           lock_grad_for_rpn=False, lock_grad_for_rcnn=False):
 
@@ -106,9 +106,8 @@ def train(epochs, img_box_dict, pretrained_model, save_path,
     trainer = FasterRCNNTrainer(fpn_resnet).cuda()
     print('model constructed')
 
-    if pretrained_model:
+    if pretrained_model is not None:
         trainer.load(pretrained_model, load_optimizer=False)
-        print('model loaded')
 
     if validate:
         dict_train, dict_val = generate_train_val_data(img_box_dict, p_train=0.95)
@@ -123,22 +122,21 @@ def train(epochs, img_box_dict, pretrained_model, save_path,
             img_size = list(img_info['img_size'])
             img_tensor = create_img_tensor(img)
             if rpn_rois:
-                img_rois = rpn_rois[img_dir]
+                img_rois = torch.from_numpy(rpn_rois[img_dir]).cuda()
                 if flipped:
                     img_rois[:, 1] = img_size[1] - img_rois[:, 1]
                     img_rois[:, 3] = img_size[1] - img_rois[:, 3]
                 trainer.train_step(img_tensor, img_info, img_rois, train_rpn, train_rcnn)
             else:
                 trainer.train_step(img_tensor, img_info, None, train_rpn, train_rcnn)
-            if i == 500:
-                break
+
         trainer.save(save_path, save_optimizer=False)
         if validate:
             map = evaluation(dict_val, fpn_resnet)
             print('mAP: ', map)
 
         # lr decay
-        if epoch == 9:
+        if epoch == int(epochs * 0.6):
             trainer.scale_lr(Config.lr_decay)
 
 

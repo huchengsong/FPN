@@ -20,8 +20,8 @@ class FasterRCNNTrainer(nn.Module):
         self.loc_normalize_mean = Config.loc_normalize_mean
         self.loc_normalize_std = Config.loc_normalize_std
 
-    def forward(self, img_tensor, img_info, rois_from_rpn=None, rpn=True, rcnn=True):
-        img_size = img_info['img_size']
+    def forward(self, img_tensor, img_info, rois_from_rpn=None, rpn=False, rcnn=False):
+        img_size = list(img_info['img_size'])
         features = self.fpn_resnet.extractor(img_tensor)
 
         gt_bbox = np.array(img_info['objects'])[:, 1:5].astype(np.float32)
@@ -60,10 +60,10 @@ class FasterRCNNTrainer(nn.Module):
         if not rpn and not rcnn:
             raise Exception('at least one needs to be true between RPN and RCNN')
 
-    def train_step(self, img_tensor, img_info, rois_from_rpn=None, train_rpn=True, train_rcnn=True):
+    def train_step(self, img_tensor, img_info, rois_from_rpn=None, train_rpn=False, train_rcnn=False):
         self.optimizer.zero_grad()
         loss = self.forward(img_tensor, img_info, rois_from_rpn, train_rpn, train_rcnn)
-        print('total loss', loss.data.cpu().numpy())
+        # print('total loss', loss.data.cpu().numpy())
         loss.backward()
         self.optimizer.step()
 

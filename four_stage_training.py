@@ -32,7 +32,7 @@ def four_stage_training(epochs=[1, 1, 1, 1]):
         img_tensor = create_img_tensor(img)
         features = fpn_resnet.extractor(img_tensor)
         _, _, rois, _ = fpn_resnet.rpn(features, img_size)
-        roi_proposals[img_dir] = rois
+        roi_proposals[img_dir] = rois.cpu().data.numpy()
 
     # train rcnn
     print('stage 2:')
