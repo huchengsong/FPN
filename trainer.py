@@ -20,7 +20,7 @@ class FasterRCNNTrainer(nn.Module):
         self.loc_normalize_mean = Config.loc_normalize_mean
         self.loc_normalize_std = Config.loc_normalize_std
 
-    def forward(self, img_tensor, img_info, rpn=True, rcnn=True):
+    def forward(self, img_tensor, img_info, rois_from_rpn=None, rpn=True, rcnn=True):
         img_size = img_info['img_size']
         features = self.fpn_resnet.extractor(img_tensor)
 
@@ -29,15 +29,21 @@ class FasterRCNNTrainer(nn.Module):
         gt_label = text_to_num(gt_label)
 
         # RPN loss
-        rpn_locs, rpn_scores, rois, anchors = self.fpn_resnet.rpn(features, img_size)
         if rpn:
+            rpn_locs, rpn_scores, rois, anchors = self.fpn_resnet.rpn(features, img_size)
             gt_rpn_label, gt_rpn_loc = generate_anchor_loc_label(anchors, gt_bbox, img_size)
             rpn_cls_loss, rpn_loc_loss = rpn_loss(rpn_scores, rpn_locs,
-                                                gt_rpn_loc, gt_rpn_label,
-                                                self.rpn_sigma)
+                                                  gt_rpn_loc, gt_rpn_label,
+                                                  self.rpn_sigma)
 
         if rcnn:
             # generate proposals from rpn rois
+            if rois_from_rpn and not rpn:
+                rois = rois_from_rpn
+            elif not rois_from_rpn and not rpn:
+                raise Exception('when train_rcnn is true and train_rpn is false, roi proposals must be provided')
+            elif rois_from_rpn and rpn:
+                raise Exception('train_rpn is true and roi proposals are provided. not sure which set of rois to use')
             sampled_roi, gt_roi_loc, gt_roi_label = generate_training_anchors(rois, gt_bbox, gt_label)
 
             # ROI loss
@@ -54,24 +60,26 @@ class FasterRCNNTrainer(nn.Module):
         if not rpn and not rcnn:
             raise Exception('at least one needs to be true between RPN and RCNN')
 
-    def train_step(self, img_tensor, img_info, train_rpn=True, train_rcnn=True):
+    def train_step(self, img_tensor, img_info, rois_from_rpn=None, train_rpn=True, train_rcnn=True):
         self.optimizer.zero_grad()
-        loss = self.forward(img_tensor, img_info, train_rpn, train_rcnn)
-        # print('total loss', loss.data.cpu().numpy())
+        loss = self.forward(img_tensor, img_info, rois_from_rpn, train_rpn, train_rcnn)
+        print('total loss', loss.data.cpu().numpy())
         loss.backward()
         self.optimizer.step()
 
-    def save(self, save_path):
+    def save(self, save_path, save_optimizer=False):
         save_dict = dict()
         save_dict['model'] = self.fpn_resnet.state_dict()
-        save_dict['optimizer'] = self.optimizer.state_dict()
+        if save_optimizer:
+            save_dict['optimizer'] = self.optimizer.state_dict()
         torch.save(save_dict, save_path)
         print('model saved as ' + save_path)
 
-    def load(self, load_path):
+    def load(self, load_path, load_optimizer=False):
         state_dict = torch.load(load_path)
         self.fpn_resnet.load_state_dict(state_dict['model'])
-        self.optimizer.load_state_dict(state_dict['optimizer'])
+        if load_optimizer:
+            self.optimizer.load_state_dict(state_dict['optimizer'])
         print('model_loaded from ' + load_path)
 
     def scale_lr(self, decay):

@@ -1,6 +1,5 @@
 from tqdm import tqdm
 import numpy as np
-import cv2
 import torch
 from torch.autograd import Variable
 from torchvision import transforms
@@ -80,37 +79,61 @@ def evaluation(eval_dict, fpn_resnet, test_num=Config.eval_num):
     return mAP
 
 
-def train(epochs, img_box_dict, pretrained_model=Config.load_path):
+def train(epochs, img_box_dict, pretrained_model, save_path,
+          rpn_rois=None, train_rpn=True, train_rcnn=True, validate=False,
+          lock_grad_for_rpn=False, lock_grad_for_rcnn=False):
+
     fpn_resnet = FPNResNet().cuda()
+
+    # lock gradient
+    if lock_grad_for_rcnn:
+        for param in fpn_resnet.parameters():
+            param.requires_grad = False
+        for param in fpn_resnet.head.parameters():
+            param.requires_grad = True
+        for name, param in fpn_resnet.named_parameters():
+            print(name, "require param:", param.requires_grad)
+
+    if lock_grad_for_rpn:
+        for param in fpn_resnet.parameters():
+            param.requires_grad = False
+        for param in fpn_resnet.rpn.parameters():
+            param.requires_grad = True
+        for name, param in fpn_resnet.named_parameters():
+            print(name, "require param:", param.requires_grad)
+
     fpn_resnet.get_optimizer(Config.lr)
     trainer = FasterRCNNTrainer(fpn_resnet).cuda()
     print('model constructed')
 
     if pretrained_model:
-        trainer.load(pretrained_model)
+        trainer.load(pretrained_model, load_optimizer=False)
+        print('model loaded')
 
-    dict_train, dict_val = generate_train_val_data(img_box_dict, p_train=0.95)
+    if validate:
+        dict_train, dict_val = generate_train_val_data(img_box_dict, p_train=0.95)
+    else:
+        dict_train = img_box_dict
+        dict_val = None
 
-    # # train rpn
-    # for epoch in range(5):
-    #     print('epoch: ', epoch)
-    #     for i, [img_dir, img_info] in tqdm(enumerate(dict_train.items())):
-    #         img, img_info = rescale_image(img_dir, img_info, flip=True)
-    #         img_tensor = create_img_tensor(img)
-    #         trainer.train_step(img_tensor, img_info, train_rpn=True, train_rcnn=False)
-    #     trainer.save('faster_rcnn_model.pt')
-
-    # train together
     for epoch in range(epochs):
         print('epoch: ', epoch)
         for i, [img_dir, img_info] in tqdm(enumerate(dict_train.items())):
-            img, img_info = rescale_image(img_dir, img_info, flip=True)
+            img, img_info, flipped = rescale_image(img_dir, img_info, flip=True)
+            img_size = list(img_info['img_size'])
             img_tensor = create_img_tensor(img)
-            trainer.train_step(img_tensor, img_info)
-        trainer.save('faster_rcnn_model.pt')
-
-        map = evaluation(dict_val, fpn_resnet)
-        print('mAP: ', map)
+            if rpn_rois:
+                img_rois = rpn_rois[img_dir]
+                if flipped:
+                    img_rois[:, 1] = img_size[1] - img_rois[:, 1]
+                    img_rois[:, 3] = img_size[1] - img_rois[:, 3]
+                trainer.train_step(img_tensor, img_info, img_rois, train_rpn, train_rcnn)
+            else:
+                trainer.train_step(img_tensor, img_info, None, train_rpn, train_rcnn)
+        trainer.save(save_path, save_optimizer=False)
+        if validate:
+            map = evaluation(dict_val, fpn_resnet)
+            print('mAP: ', map)
 
         # lr decay
         if epoch == 9:

@@ -13,7 +13,7 @@ class Config:
 
     # anchor params
     ratios = [0.5, 1., 2.]
-    scales = [16, 32]
+    scales = [8]
     stride = [4, 8, 16, 32, 64]
 
     # sigma for l1_smooth_loss
@@ -59,9 +59,7 @@ class Config:
     eval_num = float("inf")
 
     # pyramid levels to be used
-    rpn_pyramid_levels = [2, 3, 4, 5, 6]
-    roi_pyramid_levels = [2, 3, 4, 5]  # not using P2
+    rpn_pyramid_levels = [3, 4, 5, 6]
+    roi_pyramid_levels = [2, 3, 4, 5]
 
-    # model
-    load_path = None
 

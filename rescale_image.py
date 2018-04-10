@@ -6,7 +6,7 @@ from copy import deepcopy
 from configure import Config
 
 
-def rescale_image(img_dir, img_info, flip=True):
+def rescale_image(img_dir, img_info, flip=False):
     """
     rescale image such that the shorter side is s = 600 pixels
     :param img_dir: directory of a image
@@ -48,11 +48,14 @@ def rescale_image(img_dir, img_info, flip=True):
 
     # randomly flip x axis
     if flip:
+        flip_x = random.choice([True, False])
         rescaled_img, img_info = img_flip(rescaled_img, img_info,
-                                      x_flip=random.choice([True, False]),
-                                      y_flip=False)
+                                          x_flip=flip_x,
+                                          y_flip=False)
+        return rescaled_img, img_info, flip_x
 
-    return rescaled_img, img_info
+    else:
+        return rescaled_img, img_info
 
 
 def img_flip(img, img_info, x_flip=False, y_flip=False):
