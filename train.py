@@ -140,7 +140,7 @@ def train(epochs, img_box_dict, pretrained_model=None, save_path=None,
             print('mAP: ', map)
 
         # lr decay
-        if epoch == int(epochs * 0.6):
+        if epoch == int(epochs * 0.7):
             trainer.scale_lr(Config.lr_decay)
 
 

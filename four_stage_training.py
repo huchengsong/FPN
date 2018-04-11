@@ -66,4 +66,4 @@ def four_stage_training(epochs=[1, 1, 1, 1]):
 
 
 if __name__ == '__main__':
-    four_stage_training(epochs=[1, 1, 1, 1])
+    four_stage_training(epochs=[8, 8, 8, 8])
