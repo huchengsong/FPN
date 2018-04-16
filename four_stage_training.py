@@ -33,7 +33,7 @@ def four_stage_training(epochs=[1, 1, 1, 1]):
         features = fpn_resnet.extractor(img_tensor)
         _, _, rois, _ = fpn_resnet.rpn(features, img_size)
         roi_proposals[img_dir] = rois.cpu().numpy()
-    np.save('roi_proposals', roi_proposals)
+    np.save('roi_proposals.npy', roi_proposals)
 
     roi_proposals = np.load('roi_proposals.npy')[()]
     # train rcnn

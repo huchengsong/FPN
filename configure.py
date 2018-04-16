@@ -23,7 +23,7 @@ class Config:
     # param for optimizer
     weight_decay = 0.0005
     lr_decay = 0.1
-    lr = 0.001
+    lr = 0.0001  # 0.001
 
     # loc mean and std
     loc_normalize_mean = [0., 0., 0., 0.]
@@ -59,7 +59,7 @@ class Config:
     eval_num = float("inf")
 
     # pyramid levels to be used
-    rpn_pyramid_levels = [3, 4, 5, 6]
+    rpn_pyramid_levels = [4, 5, 6]
     roi_pyramid_levels = [2, 3, 4, 5]
 
 

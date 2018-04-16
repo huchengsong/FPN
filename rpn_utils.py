@@ -92,8 +92,8 @@ def generate_anchor_loc_label(anchor, gt_bbox, img_size,
     ind_inside_img = torch.nonzero(
         (anchor[:, 0] >= 0) &
         (anchor[:, 1] >= 0) &
-        (anchor[:, 2] <= img_size[0]) &  # height
-        (anchor[:, 3] <= img_size[1])  # width
+        (anchor[:, 2] <= img_size[0] - 1) &  # height
+        (anchor[:, 3] <= img_size[1] - 1)  # width
     ).squeeze_()
     selected_anchors = anchor[ind_inside_img, :]
     labels = torch.cuda.LongTensor(len(ind_inside_img)).fill_(-1)
@@ -176,7 +176,6 @@ def rpn_loss(rpn_score, rpn_loc, gt_rpn_loc, gt_rpn_label, rpn_sigma):
     mask = Variable(torch.cuda.FloatTensor(gt_rpn_loc.size()).fill_(0))
     mask[(gt_rpn_label > 0).view(-1, 1).expand_as(mask)] = 1
     loc_loss = _smooth_l1_loss(rpn_loc, gt_rpn_loc, mask, rpn_sigma)
-
     # normalize by the number of positive and negative rois
     loc_loss = loc_loss / (gt_rpn_label >= 0).float().sum()
 

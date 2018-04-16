@@ -14,3 +14,11 @@ __pycache__/fpn.cpython-36.pyc
 *.xml
 .idea/workspace.xml
 *.pyc
+*.pyc
+__pycache__/trainer.cpython-36.pyc
+__pycache__/train.cpython-36.pyc
+__pycache__/rpn_utils.cpython-36.pyc
+__pycache__/roi_module.cpython-36.pyc
+__pycache__/roi_cupy.cpython-36.pyc
+__pycache__/rescale_image.cpython-36.pyc
+__pycache__/fpn_resnet.cpython-36.pyc

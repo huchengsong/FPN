@@ -15,7 +15,7 @@ def show(test_dict):
     key = Config.class_key
     # load model
     faster_rcnn = FPNResNet().cuda()
-    state_dict = torch.load('faster_rcnn_model.pt')
+    state_dict = torch.load('final_stage.pt')
     faster_rcnn.load_state_dict(state_dict['model'])
 
     for i, [img_dir, img_info] in tqdm(enumerate(test_dict.items())):

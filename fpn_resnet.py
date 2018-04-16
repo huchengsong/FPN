@@ -75,6 +75,11 @@ class ROIAlign(nn.Module):
         """
         feature_size = list(features.size())
         rois_in_features = rois * ratio
+        rois_in_features[:, 0].clamp_(0, feature_size[2] - 1)
+        rois_in_features[:, 1].clamp_(0, feature_size[3] - 1)
+        rois_in_features[:, 2].clamp_(0, feature_size[2] - 1)
+        rois_in_features[:, 3].clamp_(0, feature_size[3] - 1)
+
         h_step = ((rois_in_features[:, 2] - rois_in_features[:, 0]) / (self.pool_out_size[0] * self.sub_sample))[:, None]
         w_step = ((rois_in_features[:, 3] - rois_in_features[:, 1]) / (self.pool_out_size[1] * self.sub_sample))[:, None]
         y_shift = torch.arange(0, self.pool_out_size[0] * self.sub_sample).cuda().expand(rois.size(0), -1) * h_step + \
@@ -91,10 +96,10 @@ class ROIAlign(nn.Module):
         loc_y = Variable(torch.frac(centers[:, 0].expand(feature_size[0], feature_size[1], -1)))
         loc_x = Variable(torch.frac(centers[:, 1].expand(feature_size[0], feature_size[1], -1)))
 
-        ind_left = torch.floor(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
-        ind_right = torch.ceil(centers[:, 1]).long().clamp(0, feature_size[3] - 1)
-        ind_up = torch.floor(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
-        ind_down = torch.ceil(centers[:, 0]).long().clamp(0, feature_size[2] - 1)
+        ind_left = torch.floor(centers[:, 1]).long()
+        ind_right = torch.ceil(centers[:, 1]).long()
+        ind_up = torch.floor(centers[:, 0]).long()
+        ind_down = torch.ceil(centers[:, 0]).long()
 
         pre_pool = features[:, :, ind_up, ind_left] * (1 - loc_y) * (1 - loc_x) + \
                    features[:, :, ind_down, ind_left] * loc_y * (1 - loc_x) + \

@@ -91,16 +91,12 @@ def train(epochs, img_box_dict, pretrained_model=None, save_path=None,
             param.requires_grad = False
         for param in fpn_resnet.head.parameters():
             param.requires_grad = True
-        for name, param in fpn_resnet.named_parameters():
-            print(name, "require param:", param.requires_grad)
 
     if lock_grad_for_rpn:
         for param in fpn_resnet.parameters():
             param.requires_grad = False
         for param in fpn_resnet.rpn.parameters():
             param.requires_grad = True
-        for name, param in fpn_resnet.named_parameters():
-            print(name, "require param:", param.requires_grad)
 
     fpn_resnet.get_optimizer(Config.lr)
     trainer = FasterRCNNTrainer(fpn_resnet).cuda()
@@ -136,7 +132,7 @@ def train(epochs, img_box_dict, pretrained_model=None, save_path=None,
 
         trainer.save(save_path, save_optimizer=False)
         if validate:
-            map = evaluation(dict_val, fpn_resnet)
+            map = evaluation(dict_val, trainer.fpn_resnet)
             print('mAP: ', map)
 
         # lr decay
